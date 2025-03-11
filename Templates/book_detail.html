@@ -1,0 +1,29 @@
+<h2>{{ book.title }}</h2>
+<p>Average Rating: {{ book.get_average_rating|default:"No ratings yet" }}</p>
+
+<!-- Other book details -->
+
+<a href="{% url 'submit_review' book.id %}">Submit a Review</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book.title }}</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h2>{{ book.title }}</h2>
+        <p><strong>Author:</strong> {{ book.author }}</p>
+        <p><strong>Genre:</strong> {{ book.genre }}</p>
+        <p><strong>Status:</strong> {{ book.get_status_display }}</p>
+        <p><strong>Summary:</strong> {{ book.summary }}</p>
+        {% if book.status == 'available' %}
+            <a href="{% url 'borrow_book' book.id %}">Borrow this book</a>
+        {% else %}
+            <p>This book is currently borrowed.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

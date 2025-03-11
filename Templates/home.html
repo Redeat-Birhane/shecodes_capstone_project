@@ -1,0 +1,8 @@
+<!-- templates/home.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Welcome to the Library Management System</h1>
+  <p><a href="{% url 'login' %}">Login</a></p>
+  <p><a href="{% url 'register' %}">Register</a></p>
+{% endblock %}

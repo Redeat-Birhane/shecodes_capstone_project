@@ -1,0 +1,7 @@
+<!-- templates/create_admin.html -->
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Create Admin</button>
+  </form>
+  

@@ -1,0 +1,17 @@
+<!-- templates/admin_dashboard.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Admin Dashboard</h2>
+  <p>Welcome, {{ user.username }}!</p>
+
+  <!-- Add links or content that only admin users should access -->
+  <h3>Admin Actions</h3>
+  <ul>
+    <li><a href="{% url 'manage_books' %}">Manage Books</a></li>
+    <li><a href="{% url 'view_users' %}">View Users</a></li>
+    <!-- Add other admin-specific functionalities here -->
+  </ul>
+
+  <p><a href="{% url 'logout' %}">Logout</a></p>
+{% endblock %}

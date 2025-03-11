@@ -1,0 +1,37 @@
+<!-- templates/book_list.html -->
+{% extends 'base.html' %}
+
+{% load static %}  <!-- This loads the static files tag -->
+
+{% block content %}
+    <div class="container">
+        <h2>Book List</h2>
+        
+        <!-- Search and Filters Form -->
+        <form method="get">
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Search by title, author, or genre">
+            <input type="text" name="genre" value="{{ genre_filter }}" placeholder="Filter by genre">
+            <input type="text" name="author" value="{{ author_filter }}" placeholder="Filter by author">
+            <input type="text" name="status" value="{{ status_filter }}" placeholder="Filter by status (e.g., available, borrowed)">
+            <button type="submit">Search</button>
+        </form>
+
+        <ul>
+            {% for book in books %}
+                <li>
+                    <strong>{{ book.title }}</strong> by {{ book.author }} ({{ book.genre }}) - Status: {{ book.status }}
+                    
+                    {% if book.status == "available" %}
+                        <a href="{% url 'borrow_book' book.id %}">Borrow</a>
+                    {% else %}
+                        {% if user.is_authenticated %}
+                            {% if user in book.borrowers.all %}
+                                <a href="{% url 'return_book' book.borrowedbook.id %}">Return</a>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endblock %}
