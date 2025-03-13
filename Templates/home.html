@@ -1,8 +1,13 @@
 <!-- templates/home.html -->
 {% extends 'base.html' %}
 
+{% block title %}Home{% endblock %}
+
 {% block content %}
-  <h1>Welcome to the Library Management System</h1>
-  <p><a href="{% url 'login' %}">Login</a></p>
-  <p><a href="{% url 'register' %}">Register</a></p>
+    <div class="container mt-5">
+        <h1>Welcome to the Library Management System</h1>
+        <p>This is the home page. You can navigate to different sections using the menu above.</p>
+        <p><a href="{% url 'login' %}" class="btn btn-primary">Login</a></p>
+        <p><a href="{% url 'register' %}" class="btn btn-secondary">Register</a></p>
+    </div>
 {% endblock %}

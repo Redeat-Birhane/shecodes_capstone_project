@@ -27,7 +27,14 @@ class RegisterForm(UserCreationForm):
 
 
 
+#class LoginForm(AuthenticationForm):
+   
+   # class Meta:
+        #model = CustomUser  # Make AuthenticationForm work with CustomUser
+        
+        #fields = ['username', 'password']
 class LoginForm(AuthenticationForm):
-    class Meta:
-        model = CustomUser  # Make AuthenticationForm work with CustomUser
-        fields = ['username', 'password']
+    def __init__(self, *args, **kwargs):
+        super(LoginForm, self).__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({'class': 'form-control'})
+        self.fields['password'].widget.attrs.update({'class': 'form-control'})        

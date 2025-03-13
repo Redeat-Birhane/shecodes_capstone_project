@@ -24,6 +24,8 @@
         {% else %}
             <p>This book is currently borrowed.</p>
         {% endif %}
+        <a href="{% url 'submit_review' book.id %}" class="btn btn-secondary mt-3">Submit a Review</a>
+   
     </div>
 </body>
 </html>

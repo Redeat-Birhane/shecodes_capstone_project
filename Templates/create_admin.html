@@ -1,7 +1,13 @@
 <!-- templates/create_admin.html -->
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create Admin</button>
-  </form>
-  
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container mt-5">
+        <h2>Create Admin</h2>
+        <form method="POST" action="{% url 'create_admin' %}" class="mt-3">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Create Admin</button>
+        </form>
+    </div>
+{% endblock %}

@@ -17,6 +17,7 @@ from .models import Book, BorrowedBook
 from django.conf import settings # type: ignore
 from django.http import HttpResponse # type: ignore
 from django.shortcuts import get_object_or_404 # type: ignore
+from django.db.models import Q  # Add this import for Q objects
 
 def return_book(request, borrowed_book_id):
     # Ensure the user is logged in

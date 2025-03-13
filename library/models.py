@@ -13,7 +13,7 @@ class CustomUser(AbstractUser):
         ('super_admin', 'Super Admin'),
     ]
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='student')
-    pass
+ 
 
     def __str__(self):
         return self.username

@@ -39,3 +39,15 @@ test_*.xml
 
 # PyCharm settings
 .idea/
+
+
+# MacOS system files
+.DS_Store
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Temporary files
+*.swp
+*.swo
+*.bak

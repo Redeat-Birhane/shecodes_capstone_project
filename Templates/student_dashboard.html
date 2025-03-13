@@ -2,6 +2,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Student Dashboard</h1>
-  <p>Welcome, {{ user.username }}! You can borrow books and view them here.</p>
+    <div class="container mt-5">
+        <h1>Student Dashboard</h1>
+        <p>Welcome, {{ user.username }}! You can borrow books and view them here.</p>
+
+        <h3>Your Borrowed Books</h3>
+        <ul class="list-group mb-3">
+            {% for book in borrowed_books %}
+            <li class="list-group-item">
+                <strong>{{ book.title }}</strong> by {{ book.author }}
+                <a href="{% url 'return_book' book.borrowedbook.id %}" class="btn btn-sm btn-warning float-right">Return</a>
+            </li>
+            {% empty %}
+            <li class="list-group-item">You have not borrowed any books.</li>
+            {% endfor %}
+        </ul>
+
+        <a href="{% url 'book_list' %}" class="btn btn-primary">Borrow New Books</a>
+    </div>
 {% endblock %}
