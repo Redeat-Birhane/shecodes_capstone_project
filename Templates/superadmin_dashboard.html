@@ -1,22 +1,20 @@
-<!-- superadmin_dashboard.html -->
-
 {% extends 'base.html' %}
 
 {% block content %}
     <div class="container mt-5">
         <h1>Super Admin Dashboard</h1>
-        <p>Welcome, {{ user.username }}! You can manage admins and super admins here.</p>
+        <p>Welcome, {{ user.username }}! You can manage admins and users here.</p>
 
         <h3>Admin Actions</h3>
         <ul class="list-group mb-3">
             <li class="list-group-item">
-                <a href="{% url 'create_admin' %}" class="btn btn-primary">Create Admin</a>
+                <a href="{% url 'create_admin' %}" class="btn btn-primary mb-3">Create Admin</a>
             </li>
             <li class="list-group-item">
-                <a href="{% url 'manage_admins' %}" class="btn btn-secondary">Manage Admins</a>
+                <a href="{% url 'manage_admins' %}" class="btn btn-primary mb-3">Manage Admins</a>
             </li>
             <li class="list-group-item">
-                <a href="{% url 'manage_superadmins' %}" class="btn btn-secondary">Manage Super Admins</a>
+                <a href="{% url 'view_users' %}" class="btn btn-primary mb-3">View Users</a>
             </li>
         </ul>
     </div>

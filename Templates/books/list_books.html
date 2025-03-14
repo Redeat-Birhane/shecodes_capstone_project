@@ -1,0 +1,41 @@
+<!-- Templates/list_books.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container mt-5">
+        <h1>List of Books</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Genre</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in books %}
+                    <tr>
+                        <td>{{ book.title }}</td>
+                        <td>{{ book.author }}</td>
+                        <td>{{ book.genre }}</td>
+                        <td>{{ book.status }}</td>
+                        <td>
+                            <a href="{% url 'edit_book' book.id %}" class="btn btn-warning btn-sm">Edit</a>
+                            <a href="{% url 'delete_book' book.id %}" class="btn btn-danger btn-sm">Delete</a>
+                            {% if book.status == 'available' %}
+                                <a href="{% url 'borrow_book' book.id %}" class="btn btn-primary btn-sm">Borrow</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No books available</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{% url 'add_book' %}" class="btn btn-success btn-sm">Add New Book</a>
+    </div>
+{% endblock %}

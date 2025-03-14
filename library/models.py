@@ -1,5 +1,6 @@
 # library/models.py
 
+from datetime import timezone
 from django.contrib.auth.models import AbstractUser # type: ignore
 from django.db import models # type: ignore
 from django.contrib.auth import get_user_model # type: ignore
@@ -19,15 +20,17 @@ class CustomUser(AbstractUser):
         return self.username
     
 class Book(models.Model):
+    
+    title = models.CharField(max_length=255)
+    author = models.CharField(max_length=255)
+    genre = models.CharField(max_length=100)
+    status = models.CharField(max_length=50, choices=[('available', 'Available'), ('borrowed', 'Borrowed')], default='available')
+   
     STATUS_CHOICES = [
         ('available', 'Available'),
         ('borrowed', 'Borrowed')
     ]
 
-    title = models.CharField(max_length=255)
-    author = models.CharField(max_length=255)
-    genre = models.CharField(max_length=100)
-    status = models.CharField(max_length=50, choices=[('available', 'Available'), ('borrowed', 'Borrowed')], default='available')
     def get_average_rating(self):
         # Calculate the average rating for the book
         reviews = self.reviews.all()
@@ -56,7 +59,8 @@ class BorrowedBook(models.Model):
     borrowed_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField()
     returned_at = models.DateTimeField(null=True, blank=True)
-    
+    rating = models.IntegerField(null=True, blank=True)  # Add rating field
+
     def __str__(self):
         return f"{self.book.title} borrowed by {self.user.username}"
 

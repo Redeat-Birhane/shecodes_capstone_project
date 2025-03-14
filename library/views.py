@@ -1,29 +1,56 @@
 from datetime import timedelta
-from django.contrib import messages  # type: ignore # Correct import
-from django.shortcuts import render, redirect  # type: ignore
-from django.contrib.auth import login, authenticate  # type: ignore
+from django.contrib import messages
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, authenticate
+from django.utils import timezone
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+from .models import CustomUser, Book, BorrowedBook, Review
+from django.contrib.auth.forms import AuthenticationForm
+from .forms import LoginForm, RatingForm, ReviewForm, AdminCreationForm, BookForm, RegisterForm, RoleChangeForm
 from .decorators import role_required
-from django.utils import timezone # type: ignore
-from django.shortcuts import get_object_or_404  # type: ignore
-from .models import CustomUser, Review
-from .forms import LoginForm, ReviewForm  # Ensure you are using the correct form
-from django.contrib.auth.decorators import login_required, user_passes_test  # type: ignore
-from .models import Book
-from .forms import BookForm
-from .forms import RegisterForm  # type: ignore
-from django.contrib.auth.forms import AuthenticationForm  # type: ignore # Make sure this is added
-from django.views.decorators.csrf import csrf_exempt # type: ignore
-from .models import Book, BorrowedBook
-from django.conf import settings # type: ignore
-from django.http import HttpResponse # type: ignore
-from django.shortcuts import get_object_or_404 # type: ignore
-from django.db.models import Q  # Add this import for Q objects
 
+
+@login_required
+@role_required(allowed_roles=['admin', 'super_admin'])
+def view_users(request):
+    users = CustomUser.objects.all()
+    return render(request, 'view_users.html', {'users': users})
+
+
+@login_required
+@role_required(allowed_roles=['admin', 'super_admin'])
+def list_books_admin(request):
+    books = Book.objects.all()
+    return render(request, 'books/list_books_admin.html', {'books': books})
+
+@login_required
+@role_required(allowed_roles=['student'])
+def list_books_student(request):
+    books = Book.objects.all()
+    return render(request, 'books/list_books_student.html', {'books': books})
+
+@login_required
+@role_required(allowed_roles=['student'])
+def student_borrowed_books(request):
+    user = request.user
+    borrowed_books = BorrowedBook.objects.filter(user=user, returned_at__isnull=True)
+
+    if request.method == 'POST':
+        form = RatingForm(request.POST)
+        if form.is_valid():
+            borrowed_book_id = request.POST.get('borrowed_book_id')
+            borrowed_book = get_object_or_404(BorrowedBook, id=borrowed_book_id)
+            borrowed_book.rating = form.cleaned_data['rating']
+            borrowed_book.save()
+            return redirect('student_borrowed_books')
+
+    return render(request, 'books/student_borrowed_books.html', {'borrowed_books': borrowed_books, 'form': RatingForm()})
+
+@login_required
 def return_book(request, borrowed_book_id):
-    # Ensure the user is logged in
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     borrowed_book = get_object_or_404(BorrowedBook, id=borrowed_book_id)
 
     # Check if the logged-in user is the one who borrowed this book
@@ -34,27 +61,25 @@ def return_book(request, borrowed_book_id):
     borrowed_book.returned_at = timezone.now()
     borrowed_book.save()
 
-    # Update the book's status to available (optional)
+    # Update the book's status to available
     borrowed_book.book.status = 'available'
     borrowed_book.book.save()
 
-    return redirect('book_list')  # Redirect back to the book list or a return success page
+    return redirect('student_borrowed_books')  # Redirect to the student's borrowed books page
+
+@login_required
 def borrow_book(request, book_id):
-    # Ensure the user is logged in
-    if not request.user.is_authenticated:
-        return redirect('login')  # Redirect to login page if not authenticated
-
     user = request.user
-    book = Book.objects.get(id=book_id)
+    book = get_object_or_404(Book, id=book_id)
 
-    # Check if user has already borrowed 3 books
+    # Check if the book is already borrowed
+    if book.status == 'borrowed':
+        return HttpResponse("This book is already borrowed by someone else.", status=400)
+
+    # Check if the user has already borrowed 3 books
     borrowed_books_count = BorrowedBook.objects.filter(user=user, returned_at__isnull=True).count()
     if borrowed_books_count >= 3:
         return HttpResponse("You can only borrow a maximum of 3 books at a time.", status=400)
-
-    # Check if the book is already borrowed (it doesn't have a returned date)
-    if BorrowedBook.objects.filter(book=book, returned_at__isnull=True).exists():
-        return HttpResponse("This book is already borrowed by someone else.", status=400)
 
     # Calculate due date (e.g., 14 days from now)
     due_date = timezone.now() + timedelta(days=14)
@@ -66,39 +91,70 @@ def borrow_book(request, book_id):
         due_date=due_date
     )
 
-    # Update book status if needed (optional, if you want to mark it as borrowed)
+    # Update book status to borrowed
     book.status = 'borrowed'
     book.save()
 
-    return redirect('book_list')  # Redirect to the book list page
-
-def home(request):
-    return render(request, 'home.html')  # Ensure you have a template 'home.html'
-
-@login_required
-@user_passes_test(lambda user: user.role == 'super_admin')
-
-
-# views.py
+    return redirect('list_books_student')  # Redirect to the student book list page
 
 
 @login_required
-def book_list(request):
+@user_passes_test(lambda user: user.role == 'admin')
+def add_book(request):
+    if request.method == 'POST':
+        form = BookForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Book added successfully.')
+            return redirect('list_books')
+        else:
+            messages.error(request, 'Error adding book. Please try again.')
+    else:
+        form = BookForm()
+    return render(request, 'books/add_book.html', {'form': form})
+
+
+
+@login_required
+@user_passes_test(lambda user: user.role == 'admin')
+def edit_book(request, book_id):
+    book = get_object_or_404(Book, id=book_id)
+    if request.method == 'POST':
+        form = BookForm(request.POST, instance=book)
+        if form.is_valid():
+            form.save()
+            return redirect('list_books')
+    else:
+        form = BookForm(instance=book)
+    return render(request, 'books/edit_book.html', {'form': form, 'book': book})
+
+
+@login_required
+@user_passes_test(lambda user: user.role == 'admin')
+def delete_book(request, book_id):
+    book = get_object_or_404(Book, id=book_id)
+    book.delete()
+    messages.success(request, 'Book deleted successfully.')
+    return redirect('list_books')
+
+
+@login_required
+def list_books(request):
     books = Book.objects.all()
-    return render(request, 'books/book_list.html', {'books': books})
+    return render(request, 'books/list_books.html', {'books': books})
 
-@csrf_exempt  # This disables CSRF protection for this view
+@csrf_exempt
 def custom_login(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        form = LoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
 
             # Redirect based on role
-            if user.is_superuser:
-                return redirect('super_admin_dashboard')
-            elif user.is_staff:
+            if user.role == 'super_admin':
+                return redirect('superadmin_dashboard')
+            elif user.role == 'admin':
                 return redirect('admin_dashboard')
             else:
                 return redirect('student_dashboard')
@@ -109,20 +165,72 @@ def custom_login(request):
 
     return render(request, 'login.html', {'form': form})
 
+@login_required
+@role_required(allowed_roles=['super_admin'])
+def superadmin_dashboard(request):
+    return render(request, 'superadmin_dashboard.html')
 
+@login_required
+@role_required(allowed_roles=['admin'])
+def admin_dashboard(request):
+    return render(request, 'admin_dashboard.html')
 
+@login_required
+@role_required(allowed_roles=['student'])
+def student_dashboard(request):
+    return render(request, 'student_dashboard.html')
 
-def login_view(request):
+@login_required
+@role_required(allowed_roles=['super_admin'])
+def manage_admins(request):
+    admins = CustomUser.objects.filter(role='admin')
     if request.method == 'POST':
-        form = LoginForm(request.POST)  # Use custom login form
+        form = AdminCreationForm(request.POST)
         if form.is_valid():
-            user = form.get_user()  # Get the user from the form
-            login(request, user)  # Log the user in
-            return redirect('home')  # Redirect to home page after successful login
+            admin = form.save(commit=False)
+            admin.role = 'admin'
+            admin.save()
+            messages.success(request, 'Admin created successfully.')
+            return redirect('manage_admins')
     else:
-        form = LoginForm()  # Instantiate the login form if GET request
+        form = AdminCreationForm()
+    return render(request, 'manage_admin.html', {'admins': admins, 'form': form})
 
-    return render(request, 'login.html')  # Render login page with form
+@login_required
+@role_required(allowed_roles=['super_admin'])
+def delete_admin(request, admin_id):
+    admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+    admin.delete()
+    messages.success(request, 'Admin deleted successfully.')
+    return redirect('manage_admins')
+
+@login_required
+@role_required(allowed_roles=['super_admin'])
+def manage_superadmins(request):
+    superadmins = CustomUser.objects.filter(role='super_admin')
+    if request.method == 'POST':
+        form = AdminCreationForm(request.POST)
+        if form.is_valid():
+            superadmin = form.save(commit=False)
+            superadmin.role = 'super_admin'
+            superadmin.save()
+            messages.success(request, 'Super Admin created successfully.')
+            return redirect('manage_superadmins')
+    else:
+        form = AdminCreationForm()
+    return render(request, 'manage_superadmin.html', {'superadmins': superadmins, 'form': form})
+
+@login_required
+@role_required(allowed_roles=['super_admin'])
+def delete_superadmin(request, superadmin_id):
+    superadmin = get_object_or_404(CustomUser, id=superadmin_id, role='super_admin')
+    superadmin.delete()
+    messages.success(request, 'Super Admin deleted successfully.')
+    return redirect('manage_superadmins')
+
+def home(request):
+    return render(request, 'home.html')
+
 
 @login_required
 @user_passes_test(lambda user: user.role == 'super_admin')
@@ -134,25 +242,19 @@ def ban_student(request, student_id):
         messages.success(request, f"Student {student.username} has been banned.")
     else:
         messages.error(request, "Only students can be banned.")
-    
-    return redirect('manage_users')
-
-# views.py
-
+    return redirect('view_users')
 
 def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()  # Save the user
-            user.role = form.cleaned_data['role']  # Save the selected role
-            user.save()  # Don't forget to save the user after assigning the role
+            user = form.save()
+            user.role = form.cleaned_data['role']
+            user.save()
 
-            # Log the user in after registration
             login(request, user)
             messages.success(request, "Registration successful! You are now logged in.")
             
-            # Redirect based on the user's role
             if user.role == 'superadmin':
                 return redirect('super_admin_dashboard')
             elif user.role == 'admin':
@@ -166,26 +268,31 @@ def register(request):
 
     return render(request, 'register.html', {'form': form})
 
-
+@login_required
 @role_required(allowed_roles=['admin', 'super_admin'])
 def manage_books(request):
-    # code to manage books
-    return render(request, 'manage_books.html')
+    books = Book.objects.all()
+    return render(request, 'books/manage_books.html', {'books': books})
 
 @role_required(allowed_roles=['super_admin'])
 def manage_users(request):
-    users = CustomUser.objects.all()  # or filter users based on certain conditions
+    users = CustomUser.objects.all()
     return render(request, 'manage_users.html', {'users': users})
 
+@login_required
 @role_required(allowed_roles=['super_admin'])
-def change_role(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
+def create_admin(request):
     if request.method == 'POST':
-        new_role = request.POST['role']
-        user.role = new_role
-        user.save()
-        return redirect('manage_users')
-    return render(request, 'change_role.html', {'user': user})
+        form = AdminCreationForm(request.POST)
+        if form.is_valid():
+            admin = form.save(commit=False)
+            admin.role = 'admin'
+            admin.save()
+            messages.success(request, 'Admin created successfully.')
+            return redirect('superadmin_dashboard')
+    else:
+        form = AdminCreationForm()
+    return render(request, 'create_admin.html', {'form': form})
 
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
@@ -203,88 +310,34 @@ def view_books(request):
 def role_based_redirect(request):
     user = request.user
     if user.role == 'admin':
-        return redirect('manage_books')  # Redirect to admin dashboard or book management
+        return redirect('manage_books')
     else:
-        return redirect('student_dashboard')  # Redirect to student dashboard (borrow books, etc.)
-    
-@login_required
-def manage_books(request):
-    # This view is for admins and super admins
-    if request.user.role in ['admin', 'super_admin']:
-        books = Book.objects.all()
-        return render(request, 'manage_books.html', {'books': books})
-    return redirect('home')  # Redirect non-admins to the home page
+        return redirect('student_dashboard')
 
 @login_required
-def superadmin_dashboard(request):
-    return render(request, 'superadmin_dashboard.html')  # Superadmin page
-
-# Admin dashboard (e.g., Manage Books)
-@login_required
-def manage_books(request):
-    return render(request, 'manage_books.html')  # Admin page for managing books
-
-# Student dashboard
-@login_required
-def student_dashboard(request):
-    return render(request, 'student_dashboard.html')  # Student page
-
-def admin_dashboard(request):
-    return render(request, 'admin_dashboard.html')
-
-@login_required
-def list_books(request):
-    books = Book.objects.all()
-    return render(request, 'books/list_books.html', {'books': books})
-
-@user_passes_test(is_admin)
-def add_book(request):
+@role_required(allowed_roles=['super_admin'])
+def change_role(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'POST':
-        form = BookForm(request.POST)
+        form = RoleChangeForm(request.POST, instance=user)
         if form.is_valid():
             form.save()
-            return redirect('book_list')
+            messages.success(request, f"Role for {user.username} has been changed.")
+            return redirect('manage_users')
     else:
-        form = BookForm()
-    return render(request, 'books/book_form.html', {'form': form})
-
-@user_passes_test(is_admin)
-def edit_book(request, book_id):
-    book = get_object_or_404(Book, id=book_id)
-    if request.method == 'POST':
-        form = BookForm(request.POST, instance=book)
-        if form.is_valid():
-            form.save()
-            return redirect('book_list')
-    else:
-        form = BookForm(instance=book)
-    return render(request, 'books/book_form.html', {'form': form})
-
-@user_passes_test(is_superadmin)
-def delete_book(request, book_id):
-    book = get_object_or_404(Book, id=book_id)
-    if request.method == 'POST':
-        book.delete()
-        return redirect('book_list')
-    return render(request, 'books/book_confirm_delete.html', {'book': book})
-
-
-def view_users(request):
-    return render(request, 'view_users.html')  # Ensure this template exists
+        form = RoleChangeForm(instance=user)
+    return render(request, 'change_role.html', {'form': form, 'user': user})
 
 @login_required
 def submit_review(request, book_id):
     book = get_object_or_404(Book, id=book_id)
 
-    # Check if the user has already submitted a review for this book
     if Review.objects.filter(user=request.user, book=book).exists():
-        # If already reviewed, you can either prevent or allow updating the review
-        return redirect('book_detail', book_id=book.id)  # Redirect to the book detail page
+        return redirect('book_detail', book_id=book.id)
 
     if request.method == 'POST':
         form = ReviewForm(request.POST)
         if form.is_valid():
-            # Create the review instance
             review = form.save(commit=False)
             review.book = book
             review.user = request.user
@@ -295,23 +348,19 @@ def submit_review(request, book_id):
 
     return render(request, 'submit_review.html', {'form': form, 'book': book})
 
-
-
 def book_list(request):
-    # Get search query from GET parameters
     search_query = request.GET.get('search', '')
     genre_filter = request.GET.get('genre', '')
     author_filter = request.GET.get('author', '')
     status_filter = request.GET.get('status', '')
 
-    # Filter books based on search and other filters
     books = Book.objects.all()
 
     if search_query:
         books = books.filter(
-            Q(title__icontains=search_query) |  # Filter by title
-            Q(author__icontains=search_query) |  # Filter by author
-            Q(genre__icontains=search_query)     # Filter by genre
+            Q(title__icontains=search_query) |
+            Q(author__icontains=search_query) |
+            Q(genre__icontains=search_query)
         )
 
     if genre_filter:
@@ -331,4 +380,20 @@ def book_list(request):
         'status_filter': status_filter,
     })
 
+@login_required
+def student_dashboard(request):
+    borrowed_books = BorrowedBook.objects.filter(user=request.user)
+    return render(request, 'student_dashboard.html', {'borrowed_books': borrowed_books})
 
+
+@login_required
+def submit_rating(request, borrowed_book_id):
+    borrowed_book = get_object_or_404(BorrowedBook, id=borrowed_book_id, user=request.user)
+    if request.method == 'POST':
+        form = RatingForm(request.POST, instance=borrowed_book)
+        if form.is_valid():
+            form.save()
+            return redirect('student_dashboard')
+    else:
+        form = RatingForm(instance=borrowed_book)
+    return render(request, 'submit_rating.html', {'form': form, 'borrowed_book': borrowed_book})

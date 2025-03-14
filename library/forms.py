@@ -2,13 +2,19 @@ from django import forms  # type: ignore
 from django.contrib.auth.forms import UserCreationForm  # type: ignore
 from library.models import CustomUser  # type: ignore
 from django.contrib.auth.forms import AuthenticationForm  # type: ignore
-from .models import Book, Review
+from .models import Book, BorrowedBook, Review
+
 
 class BookForm(forms.ModelForm):
     class Meta:
         model = Book
-        fields = ['title', 'author', 'genre', 'status']
+        fields = ['title', 'author', 'genre']
+from .models import Book, BorrowedBook, Review
 
+class BookForm(forms.ModelForm):
+    class Meta:
+        model = Book
+        fields = ['title', 'author', 'genre']
 class ReviewForm(forms.ModelForm):
     class Meta:
         model = Review
@@ -38,3 +44,24 @@ class LoginForm(AuthenticationForm):
         super(LoginForm, self).__init__(*args, **kwargs)
         self.fields['username'].widget.attrs.update({'class': 'form-control'})
         self.fields['password'].widget.attrs.update({'class': 'form-control'})        
+
+class AdminCreationForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email', 'password']
+        widgets = {
+            'password': forms.PasswordInput(),
+        }
+
+class RoleChangeForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['role']
+
+class RatingForm(forms.ModelForm):
+    class Meta:
+        model = BorrowedBook
+        fields = ['rating']
+        widgets = {
+            'rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
+        }

@@ -1,4 +1,3 @@
-<!-- student_dashboard.html -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -8,13 +7,20 @@
 
         <h3>Your Borrowed Books</h3>
         <ul class="list-group mb-3">
-            {% for book in borrowed_books %}
-            <li class="list-group-item">
-                <strong>{{ book.title }}</strong> by {{ book.author }}
-                <a href="{% url 'return_book' book.borrowedbook.id %}" class="btn btn-sm btn-warning float-right">Return</a>
-            </li>
+            {% for borrowed_book in borrowed_books %}
+                <li class="list-group-item">
+                    <strong>{{ borrowed_book.book.title }}</strong> by {{ borrowed_book.book.author }}
+                    <br>
+                    <strong>Due Date:</strong> {{ borrowed_book.due_date }}
+                    {% if borrowed_book.returned_at %}
+                        <span class="badge badge-success">Returned</span>
+                    {% else %}
+                        <a href="{% url 'return_book' borrowed_book.id %}" class="btn btn-sm btn-warning float-right">Return</a>
+                        <a href="{% url 'submit_rating' borrowed_book.id %}" class="btn btn-sm btn-primary float-right mr-2">Rate</a>
+                    {% endif %}
+                </li>
             {% empty %}
-            <li class="list-group-item">You have not borrowed any books.</li>
+                <li class="list-group-item">You have not borrowed any books.</li>
             {% endfor %}
         </ul>
 

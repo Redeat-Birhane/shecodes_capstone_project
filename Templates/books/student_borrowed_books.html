@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container mt-5">
+        <h1>My Borrowed Books</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Due Date</th>
+                    <th>Rating</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for borrowed_book in borrowed_books %}
+                    <tr>
+                        <td>{{ borrowed_book.book.title }}</td>
+                        <td>{{ borrowed_book.book.author }}</td>
+                        <td>{{ borrowed_book.due_date }}</td>
+                        <td>
+                            {% if borrowed_book.rating %}
+                                {{ borrowed_book.rating }}
+                            {% else %}
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    {{ form.rating }}
+                                    <input type="hidden" name="borrowed_book_id" value="{{ borrowed_book.id }}">
+                                    <button type="submit" class="btn btn-primary btn-sm">Rate</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'return_book' borrowed_book.id %}" class="btn btn-primary btn-sm">Return</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">You have not borrowed any books.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
